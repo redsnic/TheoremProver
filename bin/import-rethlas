@@ -1,0 +1,36 @@
+#!/bin/sh
+set -eu
+
+THEOREM_PROVER_BIN_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+export THEOREM_PROVER_BIN_DIR
+. "$THEOREM_PROVER_BIN_DIR/env.sh"
+
+if [ "$#" -ne 1 ]; then
+  echo "Usage: ./bin/import-rethlas category/problem" >&2
+  exit 2
+fi
+
+problem_id=$1
+case "$problem_id" in
+  /*|..|../*|*/..|*/../*)
+    echo "Problem id must be a relative path without '..': $problem_id" >&2
+    exit 2
+    ;;
+esac
+
+source_file="$RETHLAS_ROOT/agents/generation/results/$problem_id/blueprint_verified.md"
+if [ ! -f "$source_file" ]; then
+  echo "Verified Rethlas blueprint not found: $source_file" >&2
+  exit 1
+fi
+
+safe_id=$(printf '%s' "$problem_id" | tr '/ ' '--')
+destination="$THEOREM_PROVER_ROOT/references/rethlas-$safe_id-blueprint-verified.md"
+if [ -e "$destination" ]; then
+  echo "Refusing to overwrite existing reference: $destination" >&2
+  exit 1
+fi
+
+cp "$source_file" "$destination"
+echo "Imported: $destination"
+echo "Next: ./bin/archon discuss ."

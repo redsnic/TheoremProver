@@ -1,0 +1,26 @@
+\chapter{The binomial square identity}
+
+\begin{theorem}\leanok
+[Binomial square identity]
+  \label{thm:binomial-square-identity}
+  \lean{binomial_square_identity}
+  Let $R$ be a commutative ring and let $a,b\in R$. Then
+  \[
+    (a+b)^2=a^2+2ab+b^2,
+  \]
+  where $2$ denotes the image of the natural number two in $R$.
+\end{theorem}
+\begin{proof}
+
+\leanok
+  By the definition of a square and the two distributive laws,
+  \[
+    (a+b)^2=(a+b)(a+b)=a^2+ab+ba+b^2.
+  \]
+  Commutativity gives $ba=ab$. Hence the two middle summands are
+  $ab+ab=(1+1)ab=2ab$. Substituting this equality into the expansion and
+  regrouping by associativity proves
+  \[
+    (a+b)^2=a^2+2ab+b^2.
+  \]
+\end{proof}

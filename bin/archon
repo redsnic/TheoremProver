@@ -1,0 +1,20 @@
+#!/bin/sh
+set -eu
+
+THEOREM_PROVER_BIN_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+export THEOREM_PROVER_BIN_DIR
+. "$THEOREM_PROVER_BIN_DIR/env.sh"
+
+# The proof-intake routes can launch local agents, so keep the dashboard on
+# loopback unless the user explicitly chooses a different bind address.
+if [ -z "${ARCHON_DASHBOARD_HOST:-}" ]; then
+  ARCHON_DASHBOARD_HOST=127.0.0.1
+  export ARCHON_DASHBOARD_HOST
+fi
+
+if [ -z "${ARCHON_CODEX_BIN:-}" ] || [ ! -x "$ARCHON_CODEX_BIN" ]; then
+  echo "Codex CLI not found. Install/login to Codex or set ARCHON_CODEX_BIN." >&2
+  exit 1
+fi
+
+exec "$ARCHON_CLI_BIN" "$@"

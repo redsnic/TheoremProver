@@ -1,0 +1,10 @@
+#!/bin/sh
+set -eu
+
+THEOREM_PROVER_BIN_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+export THEOREM_PROVER_BIN_DIR
+. "$THEOREM_PROVER_BIN_DIR/env.sh"
+
+# Run Lean through Lake so project dependencies (especially Mathlib) are on
+# LEAN_PATH. Calling the toolchain's bare `lean` only sees Lean's core library.
+exec "$ELAN_HOME/bin/lake" env lean "$@"

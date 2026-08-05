@@ -1,0 +1,137 @@
+#!/bin/sh
+set -eu
+
+THEOREM_PROVER_BIN_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+THEOREM_PROVER_ROOT=$(CDPATH= cd -- "$THEOREM_PROVER_BIN_DIR/.." && pwd)
+export THEOREM_PROVER_ROOT
+cd "$THEOREM_PROVER_ROOT"
+
+ARCHON_REV=5e9ae7615efa0aa2cff11edabd5fbc0d45308fd5
+TOOLS_DIR="$THEOREM_PROVER_ROOT/.tools"
+UV_BIN="$TOOLS_DIR/bin/uv"
+ELAN_HOME="$TOOLS_DIR/elan"
+export ELAN_HOME
+
+require() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    echo "Missing prerequisite: $1" >&2
+    exit 1
+  fi
+}
+
+require curl
+require git
+require node
+require npm
+
+node_major=$(node -p 'Number(process.versions.node.split(".")[0])')
+if [ "$node_major" -lt 20 ]; then
+  echo "Node.js 20 or newer is required (found $(node --version))." >&2
+  exit 1
+fi
+
+if ! command -v codex >/dev/null 2>&1 && [ -z "${ARCHON_CODEX_BIN:-}" ]; then
+  echo "Codex CLI is required. Install it with: npm install -g @openai/codex" >&2
+  echo "Then authenticate with: codex login" >&2
+  exit 1
+fi
+
+mkdir -p "$TOOLS_DIR/bin"
+
+if [ ! -x "$UV_BIN" ]; then
+  uv_installer=$(mktemp "${TMPDIR:-/tmp}/theoremprover-uv.XXXXXX")
+  trap 'rm -f "$uv_installer"' EXIT INT TERM
+  curl --proto '=https' --tlsv1.2 -LsSf https://astral.sh/uv/install.sh -o "$uv_installer"
+  UV_INSTALL_DIR="$TOOLS_DIR/bin" UV_NO_MODIFY_PATH=1 sh "$uv_installer"
+  rm -f "$uv_installer"
+  trap - EXIT INT TERM
+fi
+
+if [ ! -x "$ELAN_HOME/bin/elan" ]; then
+  elan_installer=$(mktemp "${TMPDIR:-/tmp}/theoremprover-elan.XXXXXX")
+  trap 'rm -f "$elan_installer"' EXIT INT TERM
+  curl --proto '=https' --tlsv1.2 -LsSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -o "$elan_installer"
+  sh "$elan_installer" -y --no-modify-path --default-toolchain none
+  rm -f "$elan_installer"
+  trap - EXIT INT TERM
+fi
+
+export PATH="$TOOLS_DIR/bin:$ELAN_HOME/bin:$PATH"
+export UV_CACHE_DIR="$TOOLS_DIR/uv-cache"
+
+echo "Creating Python environments..."
+"$UV_BIN" venv --python 3.12 "$THEOREM_PROVER_ROOT/.venv"
+"$UV_BIN" pip install --python "$THEOREM_PROVER_ROOT/.venv/bin/python" \
+  "git+https://github.com/frenzymath/Archon.git@$ARCHON_REV"
+
+"$UV_BIN" venv --python 3.12 "$THEOREM_PROVER_ROOT/.rethlas-venv"
+"$UV_BIN" pip install --python "$THEOREM_PROVER_ROOT/.rethlas-venv/bin/python" \
+  -r "$THEOREM_PROVER_ROOT/rethlas/agents/generation/mcp/requirements.txt" \
+  -r "$THEOREM_PROVER_ROOT/rethlas/agents/verification/requirements.txt"
+
+ARCHON_PACKAGE_DIR=$(
+  "$THEOREM_PROVER_ROOT/.venv/bin/python" -c \
+    'import pathlib, archon; print(pathlib.Path(archon.__file__).resolve().parent)'
+)
+
+echo "Applying the Proof Studio dashboard overlay..."
+cp -R "$THEOREM_PROVER_ROOT/vendor/archon-overlay/ui/." "$ARCHON_PACKAGE_DIR/ui/"
+(
+  cd "$ARCHON_PACKAGE_DIR/ui/client"
+  npm install
+  npm run build
+)
+(
+  cd "$ARCHON_PACKAGE_DIR/ui/server"
+  npm install
+  npm run build
+)
+
+# Pre-seeding PROGRESS.md makes Archon run only its deterministic setup on an
+# existing Lean project; no agent call is spent rewriting the cloned project.
+mkdir -p "$THEOREM_PROVER_ROOT/.archon"
+if [ ! -f "$THEOREM_PROVER_ROOT/.archon/PROGRESS.md" ]; then
+  printf '%s\n' \
+    '# Project Progress' '' '## Current Stage' 'prover' '' '## Stages' \
+    '- [x] init' '- [x] autoformalize' '- [ ] prover' '- [ ] polish' '' \
+    '## Current Objectives' '' '(Add an objective through Proof Studio.)' \
+    > "$THEOREM_PROVER_ROOT/.archon/PROGRESS.md"
+fi
+
+"$THEOREM_PROVER_ROOT/.venv/bin/archon" init "$THEOREM_PROVER_ROOT" \
+  --force --harness codex --headless
+
+ARCHON_UV_PATH="$UV_BIN" "$THEOREM_PROVER_ROOT/.venv/bin/python" - <<'PY'
+import json
+import os
+from pathlib import Path
+
+root = Path(os.environ["THEOREM_PROVER_ROOT"])
+config_path = root / ".archon" / "config.json"
+config = json.loads(config_path.read_text())
+config["loop"].update({
+    "max_iterations": 2,
+    "parallel": False,
+    "max_parallel": 1,
+    "axiom_sweep": True,
+    "harness": "codex",
+})
+config["harnesses"]["codex"].update({
+    "runner": "codex",
+    "uv_bin": os.environ["ARCHON_UV_PATH"],
+    "effort": "xhigh",
+    "sandbox": "workspace-write",
+    "mcp": "lean-lsp",
+    "prompt_variant": "codex",
+})
+config["subagents"]["enabled"] = []
+config_path.write_text(json.dumps(config, indent=2) + "\n")
+PY
+
+echo "Installing Lean and Mathlib..."
+"$ELAN_HOME/bin/elan" toolchain install "$(cat "$THEOREM_PROVER_ROOT/lean-toolchain")"
+"$THEOREM_PROVER_ROOT/bin/lake" exe cache get
+"$THEOREM_PROVER_ROOT/bin/lake" build
+
+echo
+echo "Setup complete. Run ./bin/doctor, then ./bin/archon dashboard . --open"

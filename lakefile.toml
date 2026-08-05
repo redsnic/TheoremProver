@@ -1,0 +1,19 @@
+name = "TheoremProver"
+version = "0.1.0"
+keywords = ["math"]
+defaultTargets = ["TheoremProver"]
+
+[leanOptions]
+pp.unicode.fun = true # pretty-prints `fun a ↦ b`
+relaxedAutoImplicit = false
+weak.linter.mathlibStandardSet = true
+linter.style.header = false # no project copyright or license metadata yet
+maxSynthPendingDepth = 3
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "v4.32.2"
+
+[[lean_lib]]
+name = "TheoremProver"

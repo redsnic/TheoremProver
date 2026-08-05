@@ -1,0 +1,48 @@
+#!/bin/sh
+set -eu
+
+THEOREM_PROVER_BIN_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+export THEOREM_PROVER_BIN_DIR
+. "$THEOREM_PROVER_BIN_DIR/env.sh"
+cd "$THEOREM_PROVER_ROOT"
+
+if [ -z "${ARCHON_CODEX_BIN:-}" ] || [ ! -x "$ARCHON_CODEX_BIN" ]; then
+  echo "FAIL: Codex CLI not found" >&2
+  exit 1
+fi
+
+echo "Checking Codex authentication..."
+"$ARCHON_CODEX_BIN" login status
+
+echo "Checking Archon and Lean toolchains..."
+"$ARCHON_CLI_BIN" version
+"$ELAN_HOME/bin/lean" --version
+"$ELAN_HOME/bin/lake" --version
+node --version
+npm --version
+
+echo "Checking Codex harness safety configuration..."
+"$ARCHON_PYTHON" -c 'import json; c=json.load(open(".archon/config.json")); assert c["loop"]["harness"] == "codex"; assert c["harnesses"]["codex"]["sandbox"] == "workspace-write"; print("Codex harness: workspace-write")'
+
+echo "Checking Rethlas installation and sandbox configuration..."
+"$RETHLAS_PYTHON" -c 'import fastapi, fastmcp, httpx, requests, uvicorn; print("Rethlas Python dependencies: available")'
+"$RETHLAS_PYTHON" -c 'import os, sys; os.chdir("rethlas/agents/verification"); sys.path.insert(0, "."); from api.server import build_codex_command; c=build_codex_command("doctor", "P", "P"); assert "--dangerously-bypass-approvals-and-sandbox" not in c; assert c[c.index("--sandbox") + 1] == "workspace-write"; print("Rethlas verifier: workspace-write")'
+if grep -R --line-number --fixed-strings -- "--dangerously-bypass-approvals-and-sandbox" \
+  rethlas/agents/generation/tests/run_example.sh \
+  rethlas/agents/verification/api/server.py; then
+  echo "FAIL: unsafe Codex bypass flag found in Rethlas launchers" >&2
+  exit 1
+fi
+
+echo "Building the Lean project..."
+"$ELAN_HOME/bin/lake" build
+
+LEAN4_SCRIPTS="$THEOREM_PROVER_ROOT/.venv/lib/python3.12/site-packages/archon/.archon-src/skills/lean4/lib/scripts"
+echo "Checking project sources for sorry placeholders..."
+"$ARCHON_PYTHON" "$LEAN4_SCRIPTS/sorry_analyzer.py" TheoremProver --format=summary
+"$ARCHON_PYTHON" "$LEAN4_SCRIPTS/sorry_analyzer.py" TheoremProver.lean --format=summary
+
+echo "Checking project declarations for unexpected axioms..."
+bash "$LEAN4_SCRIPTS/check_axioms_inline.sh" TheoremProver TheoremProver.lean --report-only
+
+echo "Codex–Rethlas–Archon–Lean bridge is healthy."

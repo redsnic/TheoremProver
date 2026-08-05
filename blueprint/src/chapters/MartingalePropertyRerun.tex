@@ -1,0 +1,86 @@
+\chapter{A martingale from a fixed future payoff}
+
+\begin{theorem}\leanok
+[Fixed future-payoff martingale]
+  \label{thm:martingale-property}
+  \lean{martingale_property}
+  Let $X=(X_s)_{s\geq 0}$ be a measurable real-valued process on a
+  probability space, and write $\mathcal F^X_s$ for its natural
+  filtration. Assume the following finite-dimensional Markov property: if
+  $u_1,\ldots,u_m\geq s$, $\Phi:\mathbb R^m\to\mathbb R$ is measurable,
+  and $\Phi(X_{u_1},\ldots,X_{u_m})$ is integrable, then
+  \[
+    \mathbb E[\Phi(X_{u_1},\ldots,X_{u_m})\mid\mathcal F^X_s]
+    =
+    \mathbb E[\Phi(X_{u_1},\ldots,X_{u_m})\mid\sigma(X_s)]
+  \]
+  almost surely.
+
+  Fix strictly increasing times $0=t_0<t_1<\cdots<t_n$, an index
+  $k<n$, observations $y_0,\ldots,y_{n-1}$, a nonzero Gaussian scale
+  $v$, and a measurable function $g:\mathbb R\to\mathbb R$. Put
+  \[
+    Z_k=g(X_{t_n})
+      \prod_{\substack{0\leq i<n\\ k\leq i}}
+        p_v(X_{t_{i+1}},y_i),
+  \]
+  where $p_v(x,y)$ is the real Gaussian density used by the observation
+  model, and assume that $Z_k$ is integrable. Let
+  $I=[t_k,t_{k+1}]$, and let $(\mathcal F^I_s)_{s\in I}$ be a filtration
+  satisfying $\mathcal F^I_s=\mathcal F^X_s$ on $I$. Then
+  \[
+    M_s=\mathbb E[Z_k\mid\sigma(X_s)],\qquad s\in I,
+  \]
+  is a martingale with respect to $\mathcal F^I$.
+\end{theorem}
+\begin{proof}
+
+\leanok
+  First express $Z_k$ as one measurable functional of a finite family of
+  states whose times are all in the future of every $s\in I$. Index
+  coordinates by $j\in\{0,\ldots,n\}$ and set
+  \[
+    q_j=
+    \begin{cases}
+      t_j,& k+1\leq j,\\
+      t_n,& j<k+1.
+    \end{cases}
+  \]
+  Define
+  \[
+    \Phi((z_j)_{j=0}^n)
+      =g(z_n)\prod_{i=k}^{n-1}p_v(z_{i+1},y_i).
+  \]
+  The coordinates with index below $k+1$ are ignored, and every coordinate
+  actually used by $\Phi$ has $q_j=t_j$. Consequently
+  \[
+    \Phi((X_{q_j})_{j=0}^n)=Z_k.
+  \]
+  The function $\Phi$ is measurable: coordinate projections are
+  measurable, $g$ and the Gaussian-density factors are measurable, and a
+  finite product of measurable real-valued functions is measurable.
+
+  If $s\in I$, then $s\leq t_{k+1}$. Strict increase of the $t_j$ implies
+  $t_{k+1}\leq t_j$ whenever $j\geq k+1$, and also
+  $t_{k+1}\leq t_n$. Thus $s\leq q_j$ for every $j$. Applying the assumed
+  Markov property to the times $(q_j)$, the measurable function $\Phi$,
+  and the given integrability of $Z_k$ yields
+  \[
+    \mathbb E[Z_k\mid\mathcal F^X_s]
+      =\mathbb E[Z_k\mid\sigma(X_s)]=M_s
+  \]
+  almost surely. Since $\mathcal F^I_s=\mathcal F^X_s$, this identifies
+  $M_s$ with $\mathbb E[Z_k\mid\mathcal F^I_s]$ almost surely.
+
+  It remains to use the standard fixed-payoff projection argument. Each
+  conditional expectation $\mathbb E[Z_k\mid\mathcal F^I_s]$ is
+  $\mathcal F^I_s$-measurable and integrable. For $r\leq s$ in $I$, the
+  tower property and the filtration inclusion
+  $\mathcal F^I_r\subseteq\mathcal F^I_s$ give
+  \[
+    \mathbb E[M_s\mid\mathcal F^I_r]
+      =\mathbb E[Z_k\mid\mathcal F^I_r]
+      =M_r
+  \]
+  almost surely. Hence $M$ is an $\mathcal F^I$-martingale.
+\end{proof}

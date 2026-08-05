@@ -1,0 +1,66 @@
+#!/bin/sh
+set -eu
+
+THEOREM_PROVER_BIN_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+export THEOREM_PROVER_BIN_DIR
+. "$THEOREM_PROVER_BIN_DIR/env.sh"
+
+if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
+  echo "Usage: ./bin/rethlas data/path/to/problem.md [max-iterations]" >&2
+  exit 2
+fi
+
+if [ -z "${ARCHON_CODEX_BIN:-}" ] || [ ! -x "$ARCHON_CODEX_BIN" ]; then
+  echo "Codex CLI not found. Install/login to Codex or set ARCHON_CODEX_BIN." >&2
+  exit 1
+fi
+
+problem_file=$1
+max_iterations=${2:-2}
+verification_root="$RETHLAS_ROOT/agents/verification"
+generation_root="$RETHLAS_ROOT/agents/generation"
+health_url=http://127.0.0.1:8091/health
+server_pid=
+
+# The generation MCP server is configured as `python3 ./mcp/server.py`. Ensure
+# that name resolves to Rethlas's managed environment, which contains FastMCP,
+# rather than to the system Python inherited by Codex.
+PATH="$(dirname -- "$RETHLAS_PYTHON"):$PATH"
+export PATH
+
+cleanup() {
+  if [ -n "$server_pid" ]; then
+    kill "$server_pid" 2>/dev/null || true
+    wait "$server_pid" 2>/dev/null || true
+  fi
+}
+trap cleanup EXIT INT TERM
+
+if ! curl -fsS "$health_url" >/dev/null 2>&1; then
+  mkdir -p "$verification_root/logs"
+  (
+    cd "$verification_root"
+    exec "$RETHLAS_PYTHON" -m uvicorn api.server:app \
+      --host 127.0.0.1 --port 8091
+  ) >"$verification_root/logs/server.log" 2>&1 &
+  server_pid=$!
+
+  ready=false
+  attempts=0
+  while [ "$attempts" -lt 30 ]; do
+    if curl -fsS "$health_url" >/dev/null 2>&1; then
+      ready=true
+      break
+    fi
+    attempts=$((attempts + 1))
+    sleep 1
+  done
+  if [ "$ready" != true ]; then
+    echo "Rethlas verification service did not start; see $verification_root/logs/server.log" >&2
+    exit 1
+  fi
+fi
+
+cd "$generation_root"
+PROBLEM_FILE=$problem_file MAX_ITERATIONS=$max_iterations \
+  bash ./tests/run_example.sh

@@ -1,0 +1,27 @@
+# Lake build artifacts
+.lake/
+
+# Archon state directory
+.archon/
+
+# Local bootstrap toolchains and Python environment
+.tools/
+.venv/
+.rethlas-venv/
+
+# Local Proof Studio requests, hashes, status, and agent logs
+.proof-workflow/
+
+# Local agent/bootstrap state
+.claude/
+.leandag/
+
+# OS, JavaScript, and generated documentation artifacts
+.DS_Store
+node_modules/
+dist/
+blueprint/build/
+
+# Optional Lake-generated repository automation not used by this project
+.github/workflows/create-release.yml
+.github/workflows/update.yml
