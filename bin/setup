@@ -1,13 +1,24 @@
 #!/bin/sh
 set -eu
 
+# A terminal launched through Rosetta reports x86_64 even on Apple Silicon.
+# Restart the installer natively so every downloaded tool and Python wheel uses
+# the machine's real ARM64 architecture.
+if [ "$(uname -s)" = "Darwin" ] && [ "$(uname -m)" = "x86_64" ]; then
+  native_macos_arch=$(/usr/bin/arch -arm64 /usr/bin/uname -m 2>/dev/null || true)
+  if [ "$native_macos_arch" = "arm64" ]; then
+    echo "Apple Silicon detected; restarting setup natively instead of through Rosetta."
+    exec /usr/bin/arch -arm64 /bin/sh "$0" "$@"
+  fi
+fi
+
 THEOREM_PROVER_BIN_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 THEOREM_PROVER_ROOT=$(CDPATH= cd -- "$THEOREM_PROVER_BIN_DIR/.." && pwd)
 export THEOREM_PROVER_ROOT
 cd "$THEOREM_PROVER_ROOT"
 
 ARCHON_REV=5e9ae7615efa0aa2cff11edabd5fbc0d45308fd5
-SETUP_VERSION=2
+SETUP_VERSION=3
 NODE_VERSION=v24.16.0
 TOOLS_DIR="$THEOREM_PROVER_ROOT/.tools"
 UV_BIN="$TOOLS_DIR/bin/uv"
@@ -28,25 +39,42 @@ require tar
 mkdir -p "$TOOLS_DIR/bin"
 export PATH="$TOOLS_DIR/node/bin:$TOOLS_DIR/codex/node_modules/.bin:$TOOLS_DIR/bin:$ELAN_HOME/bin:$PATH"
 
+case "$(uname -s):$(uname -m)" in
+  Darwin:arm64)
+    node_platform=darwin-arm64
+    expected_node_arch=arm64
+    python_request=cpython-3.12-macos-aarch64-none
+    ;;
+  Darwin:x86_64)
+    node_platform=darwin-x64
+    expected_node_arch=x64
+    python_request=cpython-3.12-macos-x86_64-none
+    ;;
+  Linux:aarch64|Linux:arm64)
+    node_platform=linux-arm64
+    expected_node_arch=arm64
+    python_request=cpython-3.12-linux-aarch64-gnu
+    ;;
+  Linux:x86_64|Linux:amd64)
+    node_platform=linux-x64
+    expected_node_arch=x64
+    python_request=cpython-3.12-linux-x86_64-gnu
+    ;;
+  *)
+    echo "Automatic Node.js installation is not available for $(uname -s) $(uname -m)." >&2
+    echo "Install Node.js 20 or newer, then rerun ./bin/start." >&2
+    exit 1
+    ;;
+esac
+
 node_is_usable() {
   command -v node >/dev/null 2>&1 \
     && command -v npm >/dev/null 2>&1 \
-    && [ "$(node -p 'Number(process.versions.node.split(".")[0])' 2>/dev/null || printf '0')" -ge 20 ]
+    && [ "$(node -p 'Number(process.versions.node.split(".")[0])' 2>/dev/null || printf '0')" -ge 20 ] \
+    && [ "$(node -p 'process.arch' 2>/dev/null || true)" = "$expected_node_arch" ]
 }
 
 if ! node_is_usable; then
-  case "$(uname -s):$(uname -m)" in
-    Darwin:arm64) node_platform=darwin-arm64 ;;
-    Darwin:x86_64) node_platform=darwin-x64 ;;
-    Linux:aarch64|Linux:arm64) node_platform=linux-arm64 ;;
-    Linux:x86_64|Linux:amd64) node_platform=linux-x64 ;;
-    *)
-      echo "Automatic Node.js installation is not available for $(uname -s) $(uname -m)." >&2
-      echo "Install Node.js 20 or newer, then rerun ./bin/start." >&2
-      exit 1
-      ;;
-  esac
-
   node_archive="node-$NODE_VERSION-$node_platform.tar.gz"
   node_base_url="https://nodejs.org/dist/$NODE_VERSION"
   node_tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/theoremprover-node.XXXXXX")
@@ -94,7 +122,14 @@ if [ "$node_major" -lt 20 ]; then
   exit 1
 fi
 
-if [ -n "${ARCHON_CODEX_BIN:-}" ] && [ -x "$ARCHON_CODEX_BIN" ]; then
+local_codex="$TOOLS_DIR/codex/node_modules/.bin/codex"
+if [ -x "$local_codex" ]; then
+  # Refreshing under the native Node architecture repairs optional platform
+  # packages left by an interrupted Rosetta installation.
+  echo "Checking the project-local Codex CLI..."
+  npm install --prefix "$TOOLS_DIR/codex" --no-audit --no-fund @openai/codex
+  ARCHON_CODEX_BIN=$local_codex
+elif [ -n "${ARCHON_CODEX_BIN:-}" ] && [ -x "$ARCHON_CODEX_BIN" ]; then
   :
 elif command -v codex >/dev/null 2>&1; then
   ARCHON_CODEX_BIN=$(command -v codex)
@@ -105,7 +140,27 @@ else
 fi
 export ARCHON_CODEX_BIN
 
-if [ ! -x "$UV_BIN" ]; then
+binary_supports_host() {
+  [ -x "$1" ] || return 1
+  case "$(uname -s):$(uname -m)" in
+    Darwin:arm64)
+      case "$(/usr/bin/file -L "$1")" in
+        *arm64*) return 0 ;;
+        *) return 1 ;;
+      esac
+      ;;
+    *) return 0 ;;
+  esac
+}
+
+if ! binary_supports_host "$UV_BIN"; then
+  if [ -e "$UV_BIN" ]; then
+    echo "Replacing an Intel uv binary with the native $(uname -m) build."
+    mv "$UV_BIN" "$UV_BIN.before-$(uname -m).$$"
+    if [ -e "$TOOLS_DIR/bin/uvx" ]; then
+      mv "$TOOLS_DIR/bin/uvx" "$TOOLS_DIR/bin/uvx.before-$(uname -m).$$"
+    fi
+  fi
   uv_installer=$(mktemp "${TMPDIR:-/tmp}/theoremprover-uv.XXXXXX")
   trap 'rm -f "$uv_installer"' EXIT INT TERM
   curl --proto '=https' --tlsv1.2 -LsSf https://astral.sh/uv/install.sh -o "$uv_installer"
@@ -114,7 +169,12 @@ if [ ! -x "$UV_BIN" ]; then
   trap - EXIT INT TERM
 fi
 
-if [ ! -x "$ELAN_HOME/bin/elan" ]; then
+if ! binary_supports_host "$ELAN_HOME/bin/elan"; then
+  if [ -e "$ELAN_HOME" ]; then
+    elan_backup="$TOOLS_DIR/elan.before-$(uname -m).$$"
+    echo "Moving an incompatible Elan installation to $elan_backup"
+    mv "$ELAN_HOME" "$elan_backup"
+  fi
   elan_installer=$(mktemp "${TMPDIR:-/tmp}/theoremprover-elan.XXXXXX")
   trap 'rm -f "$elan_installer"' EXIT INT TERM
   curl --proto '=https' --tlsv1.2 -LsSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -o "$elan_installer"
@@ -124,13 +184,39 @@ if [ ! -x "$ELAN_HOME/bin/elan" ]; then
 fi
 
 export UV_CACHE_DIR="$TOOLS_DIR/uv-cache"
+export UV_PYTHON_INSTALL_DIR="$TOOLS_DIR/python"
+
+managed_python_compatible=true
+for managed_python_candidate in "$TOOLS_DIR"/python/*/bin/python3.12; do
+  if [ -x "$managed_python_candidate" ] \
+    && ! binary_supports_host "$managed_python_candidate"; then
+    managed_python_compatible=false
+  fi
+done
+if [ "$managed_python_compatible" = false ]; then
+  python_backup="$TOOLS_DIR/python.before-$(uname -m).$$"
+  echo "Moving incompatible managed Python installations to $python_backup"
+  mv "$TOOLS_DIR/python" "$python_backup"
+fi
+
+echo "Installing the native project-local Python interpreter..."
+"$UV_BIN" python install --no-bin "$python_request"
+MANAGED_PYTHON="$UV_PYTHON_INSTALL_DIR/$python_request/bin/python3.12"
+if [ ! -x "$MANAGED_PYTHON" ]; then
+  echo "uv did not create the expected managed Python link: $MANAGED_PYTHON" >&2
+  exit 1
+fi
+if ! binary_supports_host "$MANAGED_PYTHON"; then
+  echo "uv selected a Python interpreter for the wrong CPU architecture: $MANAGED_PYTHON" >&2
+  exit 1
+fi
 
 echo "Creating Python environments..."
-"$UV_BIN" venv --python 3.12 "$THEOREM_PROVER_ROOT/.venv"
+"$UV_BIN" venv --clear --python "$MANAGED_PYTHON" "$THEOREM_PROVER_ROOT/.venv"
 "$UV_BIN" pip install --python "$THEOREM_PROVER_ROOT/.venv/bin/python" \
   "git+https://github.com/frenzymath/Archon.git@$ARCHON_REV"
 
-"$UV_BIN" venv --python 3.12 "$THEOREM_PROVER_ROOT/.rethlas-venv"
+"$UV_BIN" venv --clear --python "$MANAGED_PYTHON" "$THEOREM_PROVER_ROOT/.rethlas-venv"
 "$UV_BIN" pip install --python "$THEOREM_PROVER_ROOT/.rethlas-venv/bin/python" \
   -r "$THEOREM_PROVER_ROOT/rethlas/agents/generation/mcp/requirements.txt" \
   -r "$THEOREM_PROVER_ROOT/rethlas/agents/verification/requirements.txt"
@@ -139,6 +225,11 @@ ARCHON_PACKAGE_DIR=$(
   "$THEOREM_PROVER_ROOT/.venv/bin/python" -c \
     'import pathlib, archon; print(pathlib.Path(archon.__file__).resolve().parent)'
 )
+
+echo "Applying Codex-only Archon compatibility fixes..."
+"$THEOREM_PROVER_ROOT/.venv/bin/python" \
+  "$THEOREM_PROVER_ROOT/vendor/archon-overlay/apply_python_compat.py" \
+  "$ARCHON_PACKAGE_DIR"
 
 echo "Applying the Proof Studio dashboard overlay..."
 cp -R "$THEOREM_PROVER_ROOT/vendor/archon-overlay/ui/." "$ARCHON_PACKAGE_DIR/ui/"
@@ -195,7 +286,12 @@ config_path.write_text(json.dumps(config, indent=2) + "\n")
 PY
 
 echo "Installing Lean and Mathlib..."
-"$ELAN_HOME/bin/elan" toolchain install "$(cat "$THEOREM_PROVER_ROOT/lean-toolchain")"
+lean_toolchain=$(cat "$THEOREM_PROVER_ROOT/lean-toolchain")
+installed_toolchains=$("$ELAN_HOME/bin/elan" toolchain list)
+case "$installed_toolchains" in
+  *"$lean_toolchain"*) echo "Lean toolchain $lean_toolchain is already installed." ;;
+  *) "$ELAN_HOME/bin/elan" toolchain install "$lean_toolchain" ;;
+esac
 "$THEOREM_PROVER_ROOT/bin/lake" exe cache get
 "$THEOREM_PROVER_ROOT/bin/lake" build
 

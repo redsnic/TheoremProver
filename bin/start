@@ -1,9 +1,18 @@
 #!/bin/sh
 set -eu
 
+# Avoid propagating a Rosetta architecture into Node, uv, Python, or Lean.
+if [ "$(uname -s)" = "Darwin" ] && [ "$(uname -m)" = "x86_64" ]; then
+  native_macos_arch=$(/usr/bin/arch -arm64 /usr/bin/uname -m 2>/dev/null || true)
+  if [ "$native_macos_arch" = "arm64" ]; then
+    echo "Apple Silicon detected; restarting TheoremProver natively."
+    exec /usr/bin/arch -arm64 /bin/sh "$0" "$@"
+  fi
+fi
+
 THEOREM_PROVER_BIN_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 THEOREM_PROVER_ROOT=$(CDPATH= cd -- "$THEOREM_PROVER_BIN_DIR/.." && pwd)
-SETUP_VERSION=2
+SETUP_VERSION=3
 
 # Load any existing project-local tools before deciding whether setup is stale.
 # shellcheck source=bin/env.sh
@@ -16,12 +25,19 @@ if [ -f "$setup_marker" ]; then
 fi
 
 node_major=$(node -p 'Number(process.versions.node.split(".")[0])' 2>/dev/null || printf '0')
+node_arch=$(node -p 'process.arch' 2>/dev/null || true)
+case "$(uname -m)" in
+  arm64|aarch64) expected_node_arch=arm64 ;;
+  x86_64|amd64) expected_node_arch=x64 ;;
+  *) expected_node_arch=$node_arch ;;
+esac
 
 if [ "$installed_version" != "$SETUP_VERSION" ] \
   || [ ! -x "$THEOREM_PROVER_ROOT/.venv/bin/archon" ] \
   || [ ! -x "$THEOREM_PROVER_ROOT/.rethlas-venv/bin/python" ] \
   || [ ! -x "$THEOREM_PROVER_ROOT/.tools/elan/bin/elan" ] \
   || [ "$node_major" -lt 20 ] \
+  || [ "$node_arch" != "$expected_node_arch" ] \
   || [ -z "${ARCHON_CODEX_BIN:-}" ] \
   || [ ! -x "$ARCHON_CODEX_BIN" ]; then
   echo "TheoremProver needs setup; installing missing project-local dependencies."

@@ -13,6 +13,7 @@ the versioned overlay under `vendor/archon-overlay/`.
 - Python 3.12.13 environments for Archon and Rethlas
 - Node.js 24.16.0 LTS for the Archon dashboard
 - Codex authentication through the machine's existing ChatGPT login
+- Rethlas `cryptography` 48.0.0, the last release with a universal macOS wheel
 
 ## Local safety changes
 

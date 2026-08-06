@@ -1,5 +1,7 @@
 # TheoremProver
 
+<!-- archon:readme -->
+
 [![Lean Action CI](https://github.com/redsnic/TheoremProver/actions/workflows/lean_action_ci.yml/badge.svg)](https://github.com/redsnic/TheoremProver/actions/workflows/lean_action_ci.yml)
 [![Lean API documentation](https://img.shields.io/badge/docs-Lean_API-4f46e5)](https://redsnic.github.io/TheoremProver/)
 
@@ -74,6 +76,10 @@ After the repository has been cloned, the same launcher is simply:
 
 Setup downloads several toolchains and can take several minutes the first time.
 Later launches reuse the completed installation.
+
+On Apple Silicon, the launcher detects terminals running through Rosetta and
+restarts itself natively. It also repairs Intel binaries left by an interrupted
+older setup, so an M-series Mac does not need Homebrew OpenSSL or Rust.
 
 ## Manual setup and verification
 

@@ -1,2 +1,5 @@
 fastmcp>=2.0.0
+# Version 50 dropped Intel macOS wheels. The latest universal2 release keeps
+# both Apple Silicon and Intel Macs on a prebuilt wheel with no OpenSSL build.
+cryptography==48.0.0
 requests>=2.31.0
