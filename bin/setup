@@ -18,7 +18,7 @@ export THEOREM_PROVER_ROOT
 cd "$THEOREM_PROVER_ROOT"
 
 ARCHON_REV=5e9ae7615efa0aa2cff11edabd5fbc0d45308fd5
-SETUP_VERSION=4
+SETUP_VERSION=5
 NODE_VERSION=v24.16.0
 TOOLS_DIR="$THEOREM_PROVER_ROOT/.tools"
 UV_BIN="$TOOLS_DIR/bin/uv"
@@ -226,7 +226,7 @@ ARCHON_PACKAGE_DIR=$(
     'import pathlib, archon; print(pathlib.Path(archon.__file__).resolve().parent)'
 )
 
-echo "Applying Codex-only Archon compatibility fixes..."
+echo "Applying TheoremProver Archon compatibility fixes..."
 "$THEOREM_PROVER_ROOT/.venv/bin/python" \
   "$THEOREM_PROVER_ROOT/vendor/archon-overlay/apply_python_compat.py" \
   "$ARCHON_PACKAGE_DIR"

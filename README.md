@@ -77,6 +77,8 @@ After the repository has been cloned, the same launcher is simply:
 Setup downloads several toolchains and can take several minutes the first time.
 Later launches reuse the completed installation.
 
+The repository may be installed in a directory whose path contains spaces.
+
 On Apple Silicon, the launcher detects terminals running through Rosetta and
 restarts itself natively. It also repairs Intel binaries left by an interrupted
 older setup, so an M-series Mac does not need Homebrew OpenSSL or Rust.
