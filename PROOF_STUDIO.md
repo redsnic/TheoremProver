@@ -4,7 +4,7 @@ Proof Studio is the local intake and orchestration page added to the Archon
 dashboard. Start it with:
 
 ```bash
-./bin/archon dashboard . --open
+./bin/start
 ```
 
 Open **New Proof** in the top navigation. The server listens on loopback only by

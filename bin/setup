@@ -7,6 +7,8 @@ export THEOREM_PROVER_ROOT
 cd "$THEOREM_PROVER_ROOT"
 
 ARCHON_REV=5e9ae7615efa0aa2cff11edabd5fbc0d45308fd5
+SETUP_VERSION=2
+NODE_VERSION=v24.16.0
 TOOLS_DIR="$THEOREM_PROVER_ROOT/.tools"
 UV_BIN="$TOOLS_DIR/bin/uv"
 ELAN_HOME="$TOOLS_DIR/elan"
@@ -21,8 +23,70 @@ require() {
 
 require curl
 require git
-require node
-require npm
+require tar
+
+mkdir -p "$TOOLS_DIR/bin"
+export PATH="$TOOLS_DIR/node/bin:$TOOLS_DIR/codex/node_modules/.bin:$TOOLS_DIR/bin:$ELAN_HOME/bin:$PATH"
+
+node_is_usable() {
+  command -v node >/dev/null 2>&1 \
+    && command -v npm >/dev/null 2>&1 \
+    && [ "$(node -p 'Number(process.versions.node.split(".")[0])' 2>/dev/null || printf '0')" -ge 20 ]
+}
+
+if ! node_is_usable; then
+  case "$(uname -s):$(uname -m)" in
+    Darwin:arm64) node_platform=darwin-arm64 ;;
+    Darwin:x86_64) node_platform=darwin-x64 ;;
+    Linux:aarch64|Linux:arm64) node_platform=linux-arm64 ;;
+    Linux:x86_64|Linux:amd64) node_platform=linux-x64 ;;
+    *)
+      echo "Automatic Node.js installation is not available for $(uname -s) $(uname -m)." >&2
+      echo "Install Node.js 20 or newer, then rerun ./bin/start." >&2
+      exit 1
+      ;;
+  esac
+
+  node_archive="node-$NODE_VERSION-$node_platform.tar.gz"
+  node_base_url="https://nodejs.org/dist/$NODE_VERSION"
+  node_tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/theoremprover-node.XXXXXX")
+  trap 'rm -rf "$node_tmp_dir"' EXIT INT TERM
+
+  echo "Installing Node.js $NODE_VERSION locally..."
+  curl --proto '=https' --tlsv1.2 -LsSf \
+    "$node_base_url/$node_archive" -o "$node_tmp_dir/$node_archive"
+  curl --proto '=https' --tlsv1.2 -LsSf \
+    "$node_base_url/SHASUMS256.txt" -o "$node_tmp_dir/SHASUMS256.txt"
+
+  expected_sha=$(awk -v archive="$node_archive" '$2 == archive { print $1 }' \
+    "$node_tmp_dir/SHASUMS256.txt")
+  if [ -z "$expected_sha" ]; then
+    echo "Could not find $node_archive in the official Node.js checksums." >&2
+    exit 1
+  fi
+  if command -v shasum >/dev/null 2>&1; then
+    actual_sha=$(shasum -a 256 "$node_tmp_dir/$node_archive" | awk '{ print $1 }')
+  elif command -v sha256sum >/dev/null 2>&1; then
+    actual_sha=$(sha256sum "$node_tmp_dir/$node_archive" | awk '{ print $1 }')
+  else
+    echo "A SHA-256 utility (shasum or sha256sum) is required." >&2
+    exit 1
+  fi
+  if [ "$actual_sha" != "$expected_sha" ]; then
+    echo "Node.js archive checksum verification failed." >&2
+    exit 1
+  fi
+
+  tar -xzf "$node_tmp_dir/$node_archive" -C "$node_tmp_dir"
+  if [ -e "$TOOLS_DIR/node" ]; then
+    node_backup="$TOOLS_DIR/node.before-$NODE_VERSION.$$"
+    echo "Moving the unusable local Node.js installation to $node_backup"
+    mv "$TOOLS_DIR/node" "$node_backup"
+  fi
+  mv "$node_tmp_dir/node-$NODE_VERSION-$node_platform" "$TOOLS_DIR/node"
+  rm -rf "$node_tmp_dir"
+  trap - EXIT INT TERM
+fi
 
 node_major=$(node -p 'Number(process.versions.node.split(".")[0])')
 if [ "$node_major" -lt 20 ]; then
@@ -30,13 +94,16 @@ if [ "$node_major" -lt 20 ]; then
   exit 1
 fi
 
-if ! command -v codex >/dev/null 2>&1 && [ -z "${ARCHON_CODEX_BIN:-}" ]; then
-  echo "Codex CLI is required. Install it with: npm install -g @openai/codex" >&2
-  echo "Then authenticate with: codex login" >&2
-  exit 1
+if [ -n "${ARCHON_CODEX_BIN:-}" ] && [ -x "$ARCHON_CODEX_BIN" ]; then
+  :
+elif command -v codex >/dev/null 2>&1; then
+  ARCHON_CODEX_BIN=$(command -v codex)
+else
+  echo "Installing the Codex CLI locally..."
+  npm install --prefix "$TOOLS_DIR/codex" --no-audit --no-fund @openai/codex
+  ARCHON_CODEX_BIN="$TOOLS_DIR/codex/node_modules/.bin/codex"
 fi
-
-mkdir -p "$TOOLS_DIR/bin"
+export ARCHON_CODEX_BIN
 
 if [ ! -x "$UV_BIN" ]; then
   uv_installer=$(mktemp "${TMPDIR:-/tmp}/theoremprover-uv.XXXXXX")
@@ -56,7 +123,6 @@ if [ ! -x "$ELAN_HOME/bin/elan" ]; then
   trap - EXIT INT TERM
 fi
 
-export PATH="$TOOLS_DIR/bin:$ELAN_HOME/bin:$PATH"
 export UV_CACHE_DIR="$TOOLS_DIR/uv-cache"
 
 echo "Creating Python environments..."
@@ -133,5 +199,7 @@ echo "Installing Lean and Mathlib..."
 "$THEOREM_PROVER_ROOT/bin/lake" exe cache get
 "$THEOREM_PROVER_ROOT/bin/lake" build
 
+printf '%s\n' "$SETUP_VERSION" > "$TOOLS_DIR/setup-version"
+
 echo
-echo "Setup complete. Run ./bin/doctor, then ./bin/archon dashboard . --open"
+echo "Setup complete. Run ./bin/start to open Proof Studio."

@@ -49,23 +49,33 @@ processes, so it remains loopback-only and must be run on the user's machine.
 
 ## Requirements
 
-The supported setup is macOS or Linux with:
+The supported setup is macOS or Linux with Git, `curl`, `tar`, and a SHA-256
+utility (`shasum` or `sha256sum`). Everything else is installed into
+project-local directories; no global Python or Node.js environment is changed.
 
-- Git and `curl`
-- Node.js 20 or newer with npm
-- [Codex CLI](https://developers.openai.com/codex/cli/) installed and logged in
+## Quick start — one command
 
-Install and authenticate Codex if necessary:
+Paste this into a terminal:
 
 ```bash
-npm install -g @openai/codex
-codex login
+git clone https://github.com/redsnic/TheoremProver.git && cd TheoremProver && ./bin/start
 ```
 
-Python 3.12, `uv`, Elan, Lean, and Mathlib are installed into project-local
-directories by the setup script. No global Python environment is modified.
+The first run installs any missing project-local tools and packages, including
+Node.js, the [Codex CLI](https://developers.openai.com/codex/cli/), Python 3.12,
+`uv`, Elan, Lean, Mathlib, Archon, and Rethlas. If Codex is not authenticated,
+the command opens its browser sign-in flow. It then launches Proof Studio.
 
-## Install
+After the repository has been cloned, the same launcher is simply:
+
+```bash
+./bin/start
+```
+
+Setup downloads several toolchains and can take several minutes the first time.
+Later launches reuse the completed installation.
+
+## Manual setup and verification
 
 ```bash
 git clone https://github.com/redsnic/TheoremProver.git
@@ -75,6 +85,8 @@ cd TheoremProver
 
 The setup script:
 
+- installs project-local Node.js and Codex when suitable versions are not
+  already available;
 - installs project-local `uv` and Elan;
 - creates isolated Archon and Rethlas Python environments;
 - installs pinned Archon 0.3.3 sources;
@@ -82,8 +94,8 @@ The setup script:
 - configures Codex as Archon's serial, bounded agent harness; and
 - downloads the Mathlib cache and builds the Lean project.
 
-Setup downloads dependencies and can take several minutes. It does not launch
-a proof-generation run.
+The setup command installs dependencies but does not authenticate Codex or
+launch a proof-generation run.
 
 Verify the installation:
 
@@ -94,7 +106,7 @@ Verify the installation:
 ## Run Proof Studio
 
 ```bash
-./bin/archon dashboard . --open
+./bin/start
 ```
 
 If the browser does not open automatically, visit:

@@ -1,0 +1,49 @@
+#!/bin/sh
+set -eu
+
+THEOREM_PROVER_BIN_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+THEOREM_PROVER_ROOT=$(CDPATH= cd -- "$THEOREM_PROVER_BIN_DIR/.." && pwd)
+SETUP_VERSION=2
+
+# Load any existing project-local tools before deciding whether setup is stale.
+# shellcheck source=bin/env.sh
+. "$THEOREM_PROVER_BIN_DIR/env.sh"
+
+setup_marker="$THEOREM_PROVER_ROOT/.tools/setup-version"
+installed_version=""
+if [ -f "$setup_marker" ]; then
+  installed_version=$(sed -n '1p' "$setup_marker")
+fi
+
+node_major=$(node -p 'Number(process.versions.node.split(".")[0])' 2>/dev/null || printf '0')
+
+if [ "$installed_version" != "$SETUP_VERSION" ] \
+  || [ ! -x "$THEOREM_PROVER_ROOT/.venv/bin/archon" ] \
+  || [ ! -x "$THEOREM_PROVER_ROOT/.rethlas-venv/bin/python" ] \
+  || [ ! -x "$THEOREM_PROVER_ROOT/.tools/elan/bin/elan" ] \
+  || [ "$node_major" -lt 20 ] \
+  || [ -z "${ARCHON_CODEX_BIN:-}" ] \
+  || [ ! -x "$ARCHON_CODEX_BIN" ]; then
+  echo "TheoremProver needs setup; installing missing project-local dependencies."
+  "$THEOREM_PROVER_BIN_DIR/setup"
+
+  # Reload paths so newly installed tools are visible to this process.
+  unset ARCHON_CODEX_BIN
+  . "$THEOREM_PROVER_BIN_DIR/env.sh"
+fi
+
+if [ -z "${ARCHON_CODEX_BIN:-}" ] || [ ! -x "$ARCHON_CODEX_BIN" ]; then
+  echo "Codex CLI was not found after setup. Rerun ./bin/setup for diagnostics." >&2
+  exit 1
+fi
+
+if ! "$ARCHON_CODEX_BIN" login status >/dev/null 2>&1; then
+  echo
+  echo "Codex sign-in is required once before Proof Studio can run agents."
+  echo "Your browser will open; return here after authentication finishes."
+  "$ARCHON_CODEX_BIN" login
+fi
+
+echo
+echo "Opening TheoremProver Proof Studio at http://127.0.0.1:8080/new-proof"
+exec "$THEOREM_PROVER_BIN_DIR/archon" dashboard "$THEOREM_PROVER_ROOT" --open

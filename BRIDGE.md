@@ -1,8 +1,9 @@
 # Codex theorem-proving bridge
 
 Pinned and packaged for reproducible project-local installation. Run
-`./bin/setup` after cloning; the script installs the versions below and applies
-the versioned Proof Studio overlay under `vendor/archon-overlay/`.
+`./bin/start` after cloning; it invokes setup when needed, authenticates Codex,
+and opens Proof Studio. The setup script installs the versions below and applies
+the versioned overlay under `vendor/archon-overlay/`.
 
 ## Components
 
@@ -10,7 +11,7 @@ the versioned Proof Studio overlay under `vendor/archon-overlay/`.
 - Rethlas, upstream commit `887cc46427636bbdd235160a112f9a30ae81d040`
 - Lean 4.32.2 and Mathlib 4.32.2
 - Python 3.12.13 environments for Archon and Rethlas
-- Node.js 24.15.0 LTS for the Archon dashboard
+- Node.js 24.16.0 LTS for the Archon dashboard
 - Codex authentication through the machine's existing ChatGPT login
 
 ## Local safety changes

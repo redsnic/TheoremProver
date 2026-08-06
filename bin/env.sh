@@ -11,13 +11,16 @@ fi
 THEOREM_PROVER_ROOT=$(CDPATH= cd -- "$THEOREM_PROVER_BIN_DIR/.." && pwd)
 export THEOREM_PROVER_ROOT
 export ELAN_HOME="$THEOREM_PROVER_ROOT/.tools/elan"
-export PATH="$THEOREM_PROVER_ROOT/.tools/node/bin:$THEOREM_PROVER_ROOT/.venv/bin:$THEOREM_PROVER_ROOT/.tools/bin:$ELAN_HOME/bin:$PATH"
+export PATH="$THEOREM_PROVER_ROOT/.tools/node/bin:$THEOREM_PROVER_ROOT/.tools/codex/node_modules/.bin:$THEOREM_PROVER_ROOT/.venv/bin:$THEOREM_PROVER_ROOT/.tools/bin:$ELAN_HOME/bin:$PATH"
 export ARCHON_CLI_BIN="$THEOREM_PROVER_ROOT/.venv/bin/archon"
 export ARCHON_PYTHON="$THEOREM_PROVER_ROOT/.venv/bin/python"
 export ARCHON_UV_BIN="$THEOREM_PROVER_ROOT/.tools/bin/uv"
 
 if [ -z "${ARCHON_CODEX_BIN:-}" ]; then
-  if command -v codex >/dev/null 2>&1; then
+  local_codex="$THEOREM_PROVER_ROOT/.tools/codex/node_modules/.bin/codex"
+  if [ -x "$local_codex" ]; then
+    ARCHON_CODEX_BIN=$local_codex
+  elif command -v codex >/dev/null 2>&1; then
     ARCHON_CODEX_BIN=$(command -v codex)
   else
     for candidate in "$HOME"/.vscode/extensions/openai.chatgpt-*/bin/macos-aarch64/codex; do
