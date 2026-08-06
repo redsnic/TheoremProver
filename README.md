@@ -1,5 +1,8 @@
 # TheoremProver
 
+[![Lean Action CI](https://github.com/redsnic/TheoremProver/actions/workflows/lean_action_ci.yml/badge.svg)](https://github.com/redsnic/TheoremProver/actions/workflows/lean_action_ci.yml)
+[![Lean API documentation](https://img.shields.io/badge/docs-Lean_API-4f46e5)](https://redsnic.github.io/TheoremProver/)
+
 TheoremProver is a local, confirmation-gated workflow that turns a mathematical
 problem into a human-readable proof blueprint and a machine-checked Lean 4
 proof. It connects four components:
@@ -32,6 +35,17 @@ expanded on demand into detailed, step-by-step mathematical explanations.
 
 This is an agentic research tool. Review theorem statements before confirming
 them and inspect the final Lean declaration before relying on a result.
+
+## Online documentation
+
+GitHub Pages publishes the project's static, generated Lean API documentation:
+
+**https://redsnic.github.io/TheoremProver/**
+
+This site lets readers browse the formal Lean modules, declarations, theorem
+signatures, and source documentation. It is intentionally not the interactive
+Proof Studio dashboard: Proof Studio can launch local Codex, Rethlas, and Archon
+processes, so it remains loopback-only and must be run on the user's machine.
 
 ## Requirements
 
