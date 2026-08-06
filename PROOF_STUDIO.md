@@ -7,8 +7,9 @@ dashboard. Start it with:
 ./bin/start
 ```
 
-Open **New Proof** in the top navigation. The server listens on loopback only by
-default; job state and logs stay under `.proof-workflow/` and are not committed.
+**New Theorem** is the default landing tab. The server listens on loopback only
+by default; job state and logs stay under `.proof-workflow/` and are not
+committed.
 
 ## Workflow
 
@@ -41,6 +42,8 @@ back to Proof Studio.
 - **View request** shows the immutable original Markdown and run metadata.
 - **Edit & rerun** copies a historical request into the editor under a new,
   collision-free slug; the original run remains unchanged.
+- **History** presents every request in a searchable list with dedicated views
+  for its verified blueprint, generated explanation, and Lean statement.
 - **Explain proof** appears after Rethlas has produced a verified blueprint. It
   uses Codex on demand to expand the mathematical proof into small numbered
   steps, optionally emphasizing a topic supplied by the user. The explanation
@@ -50,6 +53,10 @@ back to Proof Studio.
 - **Technical log** exposes the exact wrapper and agent output without making it
   the primary interface.
 - Only one confirmed workflow may occupy the expensive pipeline at a time.
+- The header reports whether Codex is authenticated. If authentication expires,
+  **Log in to Codex** starts the browser login flow again.
+- **Shut down** asks for confirmation, stops active local workers, and closes
+  the dashboard process cleanly.
 
 ## Safety boundaries
 

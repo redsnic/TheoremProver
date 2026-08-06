@@ -3,6 +3,7 @@ import type {
   ProgressData, Task, LogEntry, AggregatedStats,
   LogsResponse, SorryCount, Milestone, IterationMeta,
 } from '../types';
+import type { WorkflowJob } from '../lib/workflow';
 
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url);
@@ -55,20 +56,27 @@ export function useSorryCount() {
   return useQuery<SorryCount>({ queryKey: ['sorryCount'], queryFn: () => fetchJson('/api/sorry-count'), refetchInterval: 10000 });
 }
 
-export interface WorkflowPulseJob {
-  id: string;
-  title: string;
-  state: string;
-  active: boolean;
-  updatedAt: string;
-}
-
 export function useWorkflowJobs(enabled = true) {
-  return useQuery<WorkflowPulseJob[]>({
+  return useQuery<WorkflowJob[]>({
     queryKey: ['workflowJobs'],
     queryFn: () => fetchJson('/api/workflow/jobs'),
     enabled,
     refetchInterval: 2500,
+    refetchIntervalInBackground: true,
+  });
+}
+
+export interface SystemStatus {
+  codexLoggedIn: boolean;
+  codexLoginActive: boolean;
+}
+
+export function useSystemStatus(enabled = true) {
+  return useQuery<SystemStatus>({
+    queryKey: ['systemStatus'],
+    queryFn: () => fetchJson('/api/system/status'),
+    enabled,
+    refetchInterval: 10000,
     refetchIntervalInBackground: true,
   });
 }

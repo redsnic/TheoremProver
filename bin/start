@@ -12,7 +12,7 @@ fi
 
 THEOREM_PROVER_BIN_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 THEOREM_PROVER_ROOT=$(CDPATH= cd -- "$THEOREM_PROVER_BIN_DIR/.." && pwd)
-SETUP_VERSION=3
+SETUP_VERSION=4
 
 # Load any existing project-local tools before deciding whether setup is stale.
 # shellcheck source=bin/env.sh
@@ -61,5 +61,5 @@ if ! "$ARCHON_CODEX_BIN" login status >/dev/null 2>&1; then
 fi
 
 echo
-echo "Opening TheoremProver Proof Studio at http://127.0.0.1:8080/new-proof"
+echo "Opening TheoremProver Proof Studio at http://127.0.0.1:8080/new-theorem"
 exec "$THEOREM_PROVER_BIN_DIR/archon" dashboard "$THEOREM_PROVER_ROOT" --open

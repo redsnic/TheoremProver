@@ -1,58 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import MarkdownBlock from '../components/MarkdownBlock';
 import { highlightLeanLines } from '../utils/leanHighlight';
+import { WORKFLOW_LABELS as LABELS, type WorkflowJob as Job, type WorkflowState } from '../lib/workflow';
 import styles from './NewProof.module.css';
-
-type WorkflowState =
-  | 'AWAITING_REQUEST_CONFIRMATION' | 'RETHLAS_RUNNING' | 'PROPOSING_LEAN'
-  | 'AWAITING_LEAN_CONFIRMATION' | 'ARCHON_RUNNING' | 'LEAN_VERIFIED'
-  | 'NEEDS_ATTENTION' | 'FAILED' | 'CANCELLED';
-
-interface Proposal {
-  declarationName: string;
-  leanStatement: string;
-  plainEnglish: string;
-  assumptions: string[];
-  leanFile: string;
-  compileOk: boolean;
-  compileOutput: string;
-}
-
-interface Job {
-  id: string;
-  slug: string;
-  title: string;
-  state: WorkflowState;
-  maxIterations: number;
-  requestHash: string;
-  proposalHash?: string;
-  proposal?: Proposal;
-  requestMarkdown: string;
-  referencePath?: string;
-  leanFile?: string;
-  declarationName?: string;
-  error?: string;
-  blueprintExplanation?: string;
-  explanationActive: boolean;
-  explanationError?: string;
-  explanationUpdatedAt?: string;
-  logTail: string;
-  active: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-const LABELS: Record<WorkflowState, string> = {
-  AWAITING_REQUEST_CONFIRMATION: 'Awaiting request confirmation',
-  RETHLAS_RUNNING: 'Generating and verifying blueprint',
-  PROPOSING_LEAN: 'Preparing Lean statement',
-  AWAITING_LEAN_CONFIRMATION: 'Lean statement needs approval',
-  ARCHON_RUNNING: 'Formalizing in Lean',
-  LEAN_VERIFIED: 'Lean verified',
-  NEEDS_ATTENTION: 'Needs attention',
-  FAILED: 'Failed',
-  CANCELLED: 'Cancelled',
-};
 
 const PIPELINE = [
   'Request locked', 'Blueprint verified', 'Lean statement approved', 'Archon proof', 'Lean checks',
@@ -140,6 +91,7 @@ function Modal({ children, onClose }: { children: React.ReactNode; onClose?: () 
 }
 
 export default function NewProof() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [title, setTitle] = useState('');
   const [slug, setSlug] = useState('');
   const [slugTouched, setSlugTouched] = useState(false);
@@ -160,6 +112,7 @@ export default function NewProof() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const autoOpenedLeanJobs = useRef(new Set<string>());
+  const loadedRerunJob = useRef<string | null>(null);
 
   const refresh = async () => {
     try {
@@ -280,6 +233,16 @@ export default function NewProof() {
     window.requestAnimationFrame(() => document.getElementById('proof-request-editor')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   };
 
+  useEffect(() => {
+    const rerunId = searchParams.get('rerun');
+    if (!rerunId || loadedRerunJob.current === rerunId || jobs.length === 0) return;
+    const sourceJob = jobs.find(job => job.id === rerunId);
+    if (!sourceJob) return;
+    loadedRerunJob.current = rerunId;
+    loadRequestForRerun(sourceJob);
+    setSearchParams({}, { replace: true });
+  }, [jobs, searchParams, setSearchParams]);
+
   const openExplanation = (job: Job) => {
     setLeanJob(null);
     setExplanationFocus('');
@@ -309,7 +272,7 @@ export default function NewProof() {
   return (
     <div className={styles.page}>
       <section className={styles.hero}>
-        <div><span className={styles.eyebrow}>Proof Studio</span><h2>From a mathematical request to checked Lean</h2></div>
+        <div><span className={styles.eyebrow}>New Theorem</span><h2>From a mathematical request to checked Lean</h2></div>
         <p>Submit the idea once. The system pauses only when your mathematical intent needs confirmation.</p>
       </section>
 

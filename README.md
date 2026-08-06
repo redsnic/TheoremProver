@@ -118,7 +118,7 @@ Verify the installation:
 If the browser does not open automatically, visit:
 
 ```text
-http://127.0.0.1:8080/new-proof
+http://127.0.0.1:8080/new-theorem
 ```
 
 Then:
@@ -129,6 +129,11 @@ Then:
 4. Review the proposed human meaning, assumptions, and exact Lean statement.
 5. Approve the statement to start Archon, or request a corrected statement.
 6. Monitor the highlighted five-stage timeline until Lean verification finishes.
+
+**New Theorem** is the default tab. **History** keeps every request together
+with its verified blueprint, detailed explanation, and proposed Lean statement.
+The header also shows Codex login status and provides a confirmation-gated
+button for shutting down the local dashboard and its active worker processes.
 
 Each completed job also provides:
 

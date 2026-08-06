@@ -53,6 +53,23 @@ const explanationActive = new Map<string, ChildProcess>();
 const SLUG_RE = /^[a-z][a-z0-9_-]{1,63}$/;
 const DECL_RE = /\b(?:theorem|lemma)\s+([A-Za-z_][A-Za-z0-9_']*)\b/;
 
+function terminateProcess(child: ChildProcess): void {
+  if (!child.pid) return;
+  try {
+    if (process.platform === 'win32') child.kill('SIGTERM');
+    else process.kill(-child.pid, 'SIGTERM');
+  } catch {
+    child.kill('SIGTERM');
+  }
+}
+
+export function stopWorkflowProcesses(): void {
+  for (const child of active.values()) terminateProcess(child);
+  for (const child of explanationActive.values()) terminateProcess(child);
+  active.clear();
+  explanationActive.clear();
+}
+
 function sha256(value: string): string {
   return crypto.createHash('sha256').update(value, 'utf8').digest('hex');
 }
@@ -100,10 +117,17 @@ function publicJob(paths: ProjectPaths, job: WorkflowJob) {
   const logPath = path.join(jobDir(paths, job.id), 'workflow.log');
   const explanationPath = path.join(jobDir(paths, job.id), 'blueprint-explanation.md');
   const log = fs.existsSync(logPath) ? fs.readFileSync(logPath, 'utf8') : '';
+  let blueprintMarkdown: string | undefined;
+  try {
+    blueprintMarkdown = fs.readFileSync(verifiedReferencePath(paths, job), 'utf8');
+  } catch {
+    blueprintMarkdown = undefined;
+  }
   return {
     ...job,
     requestMarkdown: fs.existsSync(requestPath) ? fs.readFileSync(requestPath, 'utf8') : '',
     blueprintExplanation: fs.existsSync(explanationPath) ? fs.readFileSync(explanationPath, 'utf8') : undefined,
+    blueprintMarkdown,
     logTail: log.slice(-30000),
     active: active.has(job.id),
     explanationActive: explanationActive.has(job.id),
@@ -512,10 +536,7 @@ export function register(fastify: FastifyInstance, _paths: ProjectPaths) {
     const job = readJob(req.paths, (req.params as { id: string }).id);
     const child = active.get(job.id);
     if (!child?.pid) return reply.status(409).send({ error: 'Job is not running' });
-    try {
-      if (process.platform === 'win32') child.kill('SIGTERM');
-      else process.kill(-child.pid, 'SIGTERM');
-    } catch { child.kill('SIGTERM'); }
+    terminateProcess(child);
     active.delete(job.id);
     job.state = 'CANCELLED';
     job.error = 'Cancelled by user';

@@ -28,6 +28,7 @@ import { register as registerPeers } from './routes/peers.js';
 import { register as registerScope } from './routes/scope.js';
 import { register as registerSource } from './routes/source.js';
 import { register as registerWorkflow } from './routes/workflow.js';
+import { register as registerSystem } from './routes/system.js';
 import type { ProjectPaths } from './routes/project.js';
 import { makePaths, loadPeers, allowedRoots } from './paths.js';
 
@@ -126,6 +127,7 @@ export async function createServer(options: { projectPath: string; port: number 
   registerScope(fastify, paths);
   registerSource(fastify, paths);
   registerWorkflow(fastify, paths);
+  registerSystem(fastify, paths);
 
   // Host selection.
   //   Native Linux/macOS → dual-stack `::` (IPV6_V6ONLY=0 accepts IPv4 too).

@@ -1,0 +1,65 @@
+.page { max-width: 1500px; margin: 0 auto; padding: 8px 4px 40px; }
+.hero { display: flex; align-items: end; justify-content: space-between; gap: 24px; padding: 22px 24px; border: 1px solid #c7d2fe; border-radius: 16px; background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 64%, #f5f3ff 100%); box-shadow: 0 14px 38px rgba(79,70,229,.08); }
+.eyebrow { color: var(--accent-text); font-size: 9px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.hero h2 { margin-top: 3px; font-size: 25px; letter-spacing: -.025em; }
+.hero p { margin-top: 4px; color: var(--text-secondary); }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(74px, 1fr)); gap: 1px; overflow: hidden; border: 1px solid rgba(99,102,241,.18); border-radius: 11px; background: rgba(99,102,241,.16); }
+.stats div { display: flex; flex-direction: column; min-width: 82px; padding: 10px 12px; background: rgba(255,255,255,.82); }
+.stats strong { font: 750 17px var(--font-mono); }
+.stats span { color: var(--text-muted); font-size: 8px; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
+.toolbar { display: flex; align-items: end; justify-content: space-between; gap: 18px; margin: 16px 0; padding: 13px 15px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-secondary); }
+.toolbar label { display: flex; flex: 1; flex-direction: column; gap: 5px; max-width: 560px; }
+.toolbar label span { color: var(--text-muted); font-size: 8px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.toolbar input { width: 100%; padding: 9px 11px; border: 1px solid var(--border-strong); border-radius: 8px; background: white; color: var(--text-primary); }
+.toolbar input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-bg); }
+.filters { display: flex; gap: 4px; padding: 3px; border-radius: 9px; background: var(--bg-tertiary); }
+.filters button { border: 0; border-radius: 7px; padding: 7px 10px; color: var(--text-secondary); background: transparent; font-size: 10px; font-weight: 700; cursor: pointer; }
+.filters .selectedFilter { color: var(--accent-text); background: white; box-shadow: 0 1px 5px rgba(15,23,42,.1); }
+.workspace { display: grid; grid-template-columns: minmax(300px, 390px) minmax(0, 1fr); gap: 15px; min-height: 610px; }
+.runList, .detail { border: 1px solid var(--border); border-radius: 14px; background: white; box-shadow: 0 10px 30px rgba(15,23,42,.04); }
+.runList { display: flex; flex-direction: column; gap: 7px; max-height: calc(100vh - 255px); min-height: 610px; overflow: auto; padding: 10px; }
+.runCard { width: 100%; padding: 13px 14px; border: 1px solid transparent; border-radius: 11px; color: var(--text-primary); background: var(--bg-secondary); text-align: left; cursor: pointer; transition: border-color .13s, background .13s, transform .13s; }
+.runCard:hover { border-color: #c7d2fe; background: #f8faff; transform: translateY(-1px); }
+.runCard.selectedRun { border-color: #a5b4fc; background: #eef2ff; box-shadow: inset 3px 0 0 var(--accent-strong); }
+.runTop { display: flex; align-items: center; justify-content: space-between; gap: 9px; }
+.runTop time { color: var(--text-muted); font: 9px var(--font-mono); }
+.runCard h3 { margin-top: 9px; overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.runCard > code { display: block; margin-top: 1px; color: var(--text-muted); font-size: 9px; }
+.runCard > p { display: -webkit-box; margin-top: 8px; overflow: hidden; color: var(--text-secondary); font-size: 10px; line-height: 1.45; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.status { display: inline-flex; width: fit-content; padding: 4px 7px; border-radius: 999px; font-size: 8px; font-weight: 750; }
+.verified { color: #047857; background: #d1fae5; }
+.attention { color: #b91c1c; background: #fee2e2; }
+.running { color: #4338ca; background: #e0e7ff; }
+.waiting { color: #92400e; background: #fef3c7; }
+.neutral { color: var(--text-secondary); background: var(--bg-tertiary); }
+.artifactPills { display: flex; gap: 4px; margin-top: 10px; }
+.artifactPills span { padding: 3px 5px; border: 1px solid var(--border); border-radius: 5px; color: var(--text-muted); background: white; font-size: 7px; font-weight: 750; text-transform: uppercase; }
+.artifactPills .available { color: #047857; border-color: #a7f3d0; background: #ecfdf5; }
+.detail { min-width: 0; padding: 22px; }
+.detailHeader { display: flex; align-items: start; justify-content: space-between; gap: 18px; }
+.detailHeader h2 { margin: 3px 0 4px; font-size: 22px; letter-spacing: -.02em; }
+.detailMeta { display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--text-muted); font-size: 9px; }
+.detailMeta code { max-width: 360px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.detailActions { display: flex; flex: 0 0 auto; align-items: center; gap: 8px; }
+.detailActions button, .artifactEmpty button, .error button { border: 1px solid #c7d2fe; border-radius: 7px; padding: 8px 11px; color: var(--accent-text); background: #eef2ff; font-size: 10px; font-weight: 750; cursor: pointer; }
+.artifactTabs { display: flex; gap: 3px; margin-top: 21px; padding: 4px; overflow-x: auto; border-radius: 10px; background: var(--bg-tertiary); }
+.artifactTabs button { flex: 1 0 auto; border: 0; border-radius: 7px; padding: 8px 11px; color: var(--text-secondary); background: transparent; font-size: 10px; font-weight: 700; cursor: pointer; }
+.artifactTabs button b { margin-left: 4px; color: #059669; }
+.artifactTabs .activeTab { color: var(--accent-text); background: white; box-shadow: 0 1px 5px rgba(15,23,42,.1); }
+.artifactDocument { margin-top: 12px; min-height: 470px; max-height: calc(100vh - 385px); overflow: auto; padding: 21px 23px; border: 1px solid var(--border); border-radius: 12px; background: white; }
+.documentMeta { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 19px; padding-bottom: 10px; border-bottom: 1px solid var(--border); color: var(--text-muted); font-size: 8px; font-weight: 750; letter-spacing: .05em; text-transform: uppercase; }
+.documentMeta code { max-width: 58%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 8px; text-transform: none; }
+.artifactEmpty, .detailEmpty, .empty { display: grid; place-items: center; color: var(--text-muted); text-align: center; }
+.artifactEmpty { min-height: 390px; align-content: center; }
+.artifactEmpty > div { display: grid; place-items: center; width: 48px; height: 48px; margin-bottom: 12px; border-radius: 14px; color: var(--accent-text); background: var(--accent-bg); font-size: 22px; }
+.artifactEmpty h3 { color: var(--text-primary); font-size: 15px; }
+.artifactEmpty p { max-width: 470px; margin: 5px auto 14px; font-size: 11px; }
+.detailEmpty { min-height: 560px; }
+.empty { min-height: 120px; padding: 20px; font-size: 11px; }
+.error { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; padding: 10px 12px; border: 1px solid #fecaca; border-radius: 9px; color: #b91c1c; background: #fef2f2; }
+.assumptions { margin-bottom: 14px; padding: 12px 14px; border-left: 3px solid #a5b4fc; border-radius: 0 8px 8px 0; background: var(--bg-secondary); }
+.assumptions strong { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
+.assumptions ul { margin: 7px 0 0 18px; color: var(--text-secondary); }
+.leanCode { margin: 0; padding: 18px; overflow: auto; border-radius: 10px; color: #e2e8f0; background: #0f172a; font: 12px/1.7 var(--font-mono); white-space: pre-wrap; }
+@media (max-width: 980px) { .hero { align-items: start; flex-direction: column; } .workspace { grid-template-columns: 1fr; } .runList { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); min-height: auto; max-height: 390px; } .detail { min-height: 600px; } }
+@media (max-width: 650px) { .page { padding-top: 0; } .stats { grid-template-columns: repeat(2, 1fr); width: 100%; } .toolbar, .detailHeader { align-items: stretch; flex-direction: column; } .filters { display: grid; grid-template-columns: repeat(2, 1fr); } .runList { grid-template-columns: 1fr; } .detailActions { justify-content: space-between; } .artifactDocument { padding: 16px; } .documentMeta { align-items: flex-start; flex-direction: column; } .documentMeta code { max-width: 100%; } }
